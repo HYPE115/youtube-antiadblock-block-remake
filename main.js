@@ -3,62 +3,144 @@
 // (and i mean a really small chance) that this will still technically work, would have to update a few things
 // since i dont think youtube can put ads in embeds
 // they can however completely disable embeds, but if that happens then like every website ever would break so
+// YouTube Adblock Bypass with Modern UI + Cinema Mode
+// Forked from original code with enhanced interface
 
-
-document.addEventListener('yt-navigate-start', function(){
-
-    setTimeout(function()
-    {
-        if(document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER")){
-            document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER").remove(); // if the player is already there get rid of it
+document.addEventListener('yt-navigate-start', function() {
+    setTimeout(function() {
+        const oldPlayer = document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER");
+        if(oldPlayer) {
+            oldPlayer.remove();
+            console.log("[ModernUI] Removed old player during navigation");
         }
-    }, 200)
-
+    }, 200);
 });
 
-document.addEventListener('yt-page-data-updated', function(){
-
-    if(document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER")){
-        document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER").remove(); //when you use the forward and back buttons remove the player
-        console.log("[INFO] Found adblock player! Removing...");
-        console.log("[INFO] Add new one...");
+document.addEventListener('yt-page-data-updated', function() {
+    const player = document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER");
+    if(player) {
+        player.remove();
+        console.log("[ModernUI] Player removed during page update");
     }
-
 });
 
-function initNewPlayer(userEmbedURL, adblockMessageParent){
-    console.log("[INFO] Initializing new player...");
-    let newPlayer = document.createElement("EMBED"); // create a new embed (i dont think they can legally show ads on embeds)
-    newPlayer.setAttribute("id", "YOUTUBEADBLOCKBLOCKPLAYER");
-    newPlayer.setAttribute("class", "style-scope ytd-enforcement-message-view-model"); // disguise the embed as the adblock message so it works under the parent element
-    newPlayer.setAttribute("height", String(window.screen.availHeight / 1.5));
-    newPlayer.setAttribute("width", String(window.screen.availWidth / 1.5));
-    newPlayer.setAttribute("src", userEmbedURL);
-    adblockMessageParent[0].appendChild(newPlayer); //put it on the parent
+function createModernPlayerContainer() {
+    const container = document.createElement("div");
+    container.id = "MODERN-YT-CONTAINER";
+    container.style.position = "relative";
+    container.style.width = "100%";
+    container.style.maxWidth = "1200px";
+    container.style.margin = "0 auto";
+    container.style.borderRadius = "12px";
+    container.style.overflow = "hidden";
+    container.style.boxShadow = "0 4px 20px rgba(0,0,0,0.2)";
+    container.style.transition = "all 0.3s ease-in-out";
+
+    return container;
 }
 
+function createModernPlayerFrame(videoUrl) {
+    const iframe = document.createElement("iframe");
+    iframe.id = "YOUTUBEADBLOCKBLOCKPLAYER";
+    iframe.setAttribute("allowfullscreen", "true");
+    iframe.setAttribute("allow", "autoplay; encrypted-media");
+    iframe.style.width = "100%";
+    iframe.style.height = "calc(56.25vw)";
+    iframe.style.maxHeight = "675px";
+    iframe.style.border = "none";
+    iframe.style.borderRadius = "12px";
 
-document.addEventListener('yt-navigate-finish', function(){
+    iframe.src = videoUrl;
+    return iframe;
+}
 
-    let userEmbedURLFormat = window.location.href.replace("watch?v=", "embed/"); // get the embed url
+function createCinemaModeButton() {
+    const button = document.createElement("button");
+    button.id = "cinema-mode-button";
+    button.innerText = "⛶";
+    button.style.position = "absolute";
+    button.style.bottom = "10px";
+    button.style.right = "10px";
+    button.style.background = "rgba(0, 0, 0, 0.7)";
+    button.style.color = "white";
+    button.style.border = "none";
+    button.style.padding = "10px";
+    button.style.borderRadius = "5px";
+    button.style.cursor = "pointer";
+    button.style.fontSize = "16px";
 
-    let userEmbedURL = userEmbedURLFormat.slice(0,41) + "?autoplay=1"; // no autoplay
+    button.addEventListener("click", function() {
+        const container = document.getElementById("MODERN-YT-CONTAINER");
+        if (container.classList.contains("cinema-mode")) {
+            container.classList.remove("cinema-mode");
+            container.style.maxWidth = "1200px";
+            container.style.width = "100%";
+            container.style.position = "relative";
+            container.style.height = "auto";
+            document.body.style.overflow = "auto";
+            button.innerText = "⛶"; // Retour à l'icône mode cinéma
+        } else {
+            container.classList.add("cinema-mode");
+            container.style.maxWidth = "100vw";
+            container.style.width = "100vw";
+            container.style.height = "90vh";
+            container.style.position = "fixed";
+            container.style.top = "5vh";
+            container.style.left = "0";
+            container.style.zIndex = "1000";
+            document.body.style.overflow = "hidden";
+            button.innerText = "❌"; // Icône pour quitter le mode cinéma
+        }
+    });
+    return button;
+}
 
-    setTimeout(function(){
-        if(!document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER")){
-            // get rid of the adblock message but get the parent
-            let adblockMessage = document.querySelectorAll("div.style-scope.ytd-enforcement-message-view-model");
-            let adblockMessageParent = document.querySelectorAll("ytd-enforcement-message-view-model.style-scope.yt-playability-error-supported-renderers");
-            if(adblockMessage[0]){
-                adblockMessage[0].remove();
-                initNewPlayer(userEmbedURL, adblockMessageParent);
+function createModernUI(videoUrl, parentElement) {
+    console.log("[ModernUI] Creating modern YouTube interface");
+
+    const container = createModernPlayerContainer();
+    const player = createModernPlayerFrame(videoUrl);
+    const cinemaButton = createCinemaModeButton();
+
+    container.appendChild(player);
+    container.appendChild(cinemaButton);
+    parentElement[0].appendChild(container);
+
+    window.addEventListener('resize', function() {
+        player.style.height = `${container.offsetWidth * 0.5625}px`;
+    });
+}
+
+document.addEventListener('yt-navigate-finish', function() {
+    const videoId = new URLSearchParams(window.location.search).get('v');
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+
+    setTimeout(function() {
+        if(!document.getElementById("YOUTUBEADBLOCKBLOCKPLAYER")) {
+            const adblockParent = document.querySelectorAll("ytd-enforcement-message-view-model.style-scope.yt-playability-error-supported-renderers");
+
+            if(adblockParent.length > 0) {
+                const adblockMessage = document.querySelector("div.style-scope.ytd-enforcement-message-view-model");
+                if(adblockMessage) adblockMessage.remove();
+                createModernUI(embedUrl, adblockParent);
+                console.log("[ModernUI] Modern player initialized successfully");
             } else {
-                initNewPlayer(userEmbedURL, adblockMessageParent); // why am i making the adblock player appear if the block isnt there
-                if(!adblockMessage[0])
-                {
-                    console.log("[WARN] Adblock message already removed, or hasnt been removed."); // this means literally nothing lol
-                }
+                console.log("[ModernUI] No adblock message detected");
             }
         }
-    }, 100)
+    }, 100);
 });
+
+// Add dark mode support
+function checkDarkMode() {
+    const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(darkMode) {
+        document.documentElement.style.setProperty('--yt-spec-base-background', '#0f0f0f');
+    } else {
+        document.documentElement.style.setProperty('--yt-spec-base-background', '#f9f9f9');
+    }
+}
+
+// Initialize dark mode check
+checkDarkMode();
+window.matchMedia('(prefers-color-scheme: dark)').addListener(checkDarkMode);
